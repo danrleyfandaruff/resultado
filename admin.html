@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Chá Revelação</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --cream:  #faf7f2;
+      --beige:  #e8ddd0;
+      --gold:   #c9a84c;
+      --brown:  #4a3728;
+      --brown-light: #8a6a5a;
+      --green:  #4a7a4a;
+      --white:  #ffffff;
+      --red:    #a05050;
+    }
+    body {
+      font-family: 'Lato', sans-serif;
+      background: var(--cream);
+      color: var(--brown);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: var(--white);
+      border-bottom: 1px solid var(--beige);
+      padding: 28px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      position: relative;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 4px;
+      background: linear-gradient(90deg, var(--gold), #e8d5a3, var(--gold));
+    }
+    .header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      color: var(--brown);
+    }
+    .header h1 span { color: var(--gold); font-size: 1rem; font-weight: 400; font-style: italic; display: block; }
+    .btn-refresh {
+      padding: 9px 20px;
+      border: 2px solid var(--gold);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--gold);
+      font-family: 'Lato', sans-serif;
+      font-size: .85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-refresh:hover { background: var(--gold); color: var(--white); }
+
+    /* ── STATS ── */
+    .stats {
+      display: flex;
+      gap: 14px;
+      padding: 24px 32px 0;
+      flex-wrap: wrap;
+    }
+    .stat-card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 16px 24px;
+      border: 1px solid var(--beige);
+      flex: 1;
+      min-width: 140px;
+      text-align: center;
+    }
+    .stat-card .num {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--brown);
+      line-height: 1;
+    }
+    .stat-card .num.gold  { color: var(--gold); }
+    .stat-card .num.green { color: var(--green); }
+    .stat-card .label {
+      font-size: .78rem;
+      color: var(--brown-light);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-top: 4px;
+    }
+
+    /* ── MAIN ── */
+    .main {
+      padding: 24px 32px 60px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 768px) {
+      .main { grid-template-columns: 1fr; padding: 16px; }
+      .stats { padding: 16px 16px 0; }
+      .header { padding: 20px 16px; }
+    }
+
+    /* ── SECTION ── */
+    .section { background: var(--white); border-radius: 16px; border: 1px solid var(--beige); overflow: hidden; }
+    .section-title {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--beige);
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .section-title .badge {
+      background: var(--beige);
+      color: var(--brown-light);
+      font-size: .72rem;
+      font-weight: 700;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-family: 'Lato', sans-serif;
+    }
+
+    /* ── TABLE ── */
+    .tbl { width: 100%; border-collapse: collapse; }
+    .tbl th {
+      text-align: left;
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--brown-light);
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--beige);
+      font-weight: 700;
+    }
+    .tbl td {
+      padding: 10px 16px;
+      font-size: .88rem;
+      border-bottom: 1px solid #f5f0ea;
+      vertical-align: middle;
+    }
+    .tbl tr:last-child td { border-bottom: none; }
+    .tbl tr:hover td { background: #fdf9f4; }
+    .item-name { font-weight: 700; color: var(--brown); }
+    .guest-name { color: var(--brown-light); }
+    .date { color: var(--brown-light); font-size: .78rem; white-space: nowrap; }
+
+    /* progress bar */
+    .progress-wrap { display: flex; align-items: center; gap: 8px; }
+    .progress-bar {
+      flex: 1; height: 6px; background: var(--beige); border-radius: 3px; overflow: hidden;
+    }
+    .progress-fill { height: 100%; border-radius: 3px; background: var(--gold); transition: width .4s; }
+    .progress-fill.full { background: var(--green); }
+    .progress-text { font-size: .75rem; color: var(--brown-light); white-space: nowrap; }
+
+    /* ── EMPTY / LOADING ── */
+    .empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--brown-light);
+      font-size: .9rem;
+    }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--beige); border-top-color: var(--gold);
+      border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── TIMESTAMP ── */
+    .updated {
+      text-align: center;
+      color: var(--brown-light);
+      font-size: .75rem;
+      padding: 12px;
+      opacity: .6;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <h1>🍼 Chá Revelação — Admin <span>Laura ou Benicio?</span></h1>
+    <button class="btn-refresh" onclick="loadAll()">↻ Atualizar</button>
+  </header>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="num gold" id="stat-pessoas">—</div>
+      <div class="label">Pessoas</div>
+    </div>
+    <div class="stat-card">
+      <div class="num" id="stat-fraldas">—</div>
+      <div class="label">Fraldas reservadas</div>
+    </div>
+    <div class="stat-card">
+      <div class="num" id="stat-mimos">—</div>
+      <div class="label">Mimos reservados</div>
+    </div>
+    <div class="stat-card">
+      <div class="num green" id="stat-total">—</div>
+      <div class="label">Total de itens</div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main">
+
+    <!-- FRALDAS -->
+    <div class="section">
+      <div class="section-title">
+        🧷 Fraldas
+        <span class="badge" id="badge-fraldas">carregando…</span>
+      </div>
+      <div id="table-fraldas"><div class="empty"><div class="spinner"></div></div></div>
+    </div>
+
+    <!-- MIMOS -->
+    <div class="section">
+      <div class="section-title">
+        🎁 Mimos
+        <span class="badge" id="badge-mimos">carregando…</span>
+      </div>
+      <div id="table-mimos"><div class="empty"><div class="spinner"></div></div></div>
+    </div>
+
+    <!-- POR PESSOA -->
+    <div class="section" style="grid-column:1/-1">
+      <div class="section-title">
+        👥 Por pessoa
+        <span class="badge" id="badge-pessoas">carregando…</span>
+      </div>
+      <div id="table-pessoas"><div class="empty"><div class="spinner"></div></div></div>
+    </div>
+
+  </div>
+
+  <div class="updated" id="updated"></div>
+
+  <script>
+    const { createClient } = supabase;
+    const db = createClient(
+      'https://tjdrvdadfsmjqeaqvqti.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqZHJ2ZGFkZnNtanFlYXF2cXRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzNDY1OTAsImV4cCI6MjA4NTkyMjU5MH0.0uWaZbeLJCJGNxbe7YE7JyPNDTWoKg6tn3pB34RwrQ8'
+    );
+
+    async function loadAll() {
+      document.getElementById('updated').textContent = '';
+      await Promise.all([loadItems(), loadReservations()]);
+      const now = new Date().toLocaleTimeString('pt-BR');
+      document.getElementById('updated').textContent = `Última atualização: ${now}`;
+    }
+
+    let allItems = [];
+    let allReservations = [];
+
+    async function loadItems() {
+      const { data } = await db.from('items')
+        .select('id, name, category, quantity_total, quantity_available, sort_order')
+        .order('category').order('sort_order');
+      allItems = data || [];
+    }
+
+    async function loadReservations() {
+      const { data } = await db.from('reservations')
+        .select('id, item_id, guest_name, created_at')
+        .order('created_at', { ascending: false });
+      allReservations = data || [];
+      render();
+    }
+
+    function render() {
+      const fraldas  = allItems.filter(i => i.category === 'fraldas');
+      const mimos    = allItems.filter(i => i.category === 'presentes');
+      const reservas = allReservations;
+
+      // ── Stats ────────────────────────────────────────────────────────────
+      const people    = [...new Set(reservas.map(r => r.guest_name))];
+      const rFraldas  = reservas.filter(r => fraldas.some(f => f.id === r.item_id));
+      const rMimos    = reservas.filter(r => mimos.some(m => m.id === r.item_id));
+
+      document.getElementById('stat-pessoas').textContent = people.length;
+      document.getElementById('stat-fraldas').textContent = rFraldas.length;
+      document.getElementById('stat-mimos').textContent   = rMimos.length;
+      document.getElementById('stat-total').textContent   = reservas.length;
+
+      // ── Fraldas table ────────────────────────────────────────────────────
+      renderItemsTable('table-fraldas', 'badge-fraldas', fraldas, reservas);
+
+      // ── Mimos table ──────────────────────────────────────────────────────
+      renderItemsTable('table-mimos', 'badge-mimos', mimos, reservas);
+
+      // ── Por pessoa ───────────────────────────────────────────────────────
+      renderPeopleTable('table-pessoas', 'badge-pessoas', reservas);
+    }
+
+    function renderItemsTable(containerId, badgeId, items, reservas) {
+      const container = document.getElementById(containerId);
+      const badge     = document.getElementById(badgeId);
+
+      const totalReservado = items.reduce((s, i) => s + (i.quantity_total - i.quantity_available), 0);
+      const totalGeral     = items.reduce((s, i) => s + i.quantity_total, 0);
+      badge.textContent    = `${totalReservado}/${totalGeral}`;
+
+      if (items.length === 0) {
+        container.innerHTML = `<div class="empty">Nenhum item cadastrado.</div>`;
+        return;
+      }
+
+      const rows = items.map(item => {
+        const reservado  = item.quantity_total - item.quantity_available;
+        const pct        = Math.round((reservado / item.quantity_total) * 100);
+        const isFull     = item.quantity_available === 0;
+        const quemReservou = reservas
+          .filter(r => r.item_id === item.id)
+          .map(r => r.guest_name)
+          .join(', ') || '—';
+
+        return `<tr>
+          <td>
+            <div class="item-name">${item.name}</div>
+            <div class="guest-name" style="font-size:.78rem;margin-top:2px">${quemReservou}</div>
+          </td>
+          <td style="min-width:120px">
+            <div class="progress-wrap">
+              <div class="progress-bar">
+                <div class="progress-fill${isFull ? ' full' : ''}" style="width:${pct}%"></div>
+              </div>
+              <span class="progress-text">${reservado}/${item.quantity_total}</span>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+
+      container.innerHTML = `
+        <table class="tbl">
+          <thead><tr><th>Item</th><th>Progresso</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+
+    function renderPeopleTable(containerId, badgeId, reservas) {
+      const container = document.getElementById(containerId);
+      const badge     = document.getElementById(badgeId);
+      const people    = [...new Set(reservas.map(r => r.guest_name))];
+      badge.textContent = `${people.length} pessoa${people.length !== 1 ? 's' : ''}`;
+
+      if (people.length === 0) {
+        container.innerHTML = `<div class="empty">Nenhuma reserva ainda. 🎀</div>`;
+        return;
+      }
+
+      const rows = people.map(person => {
+        const itens = reservas.filter(r => r.guest_name === person);
+        const nomes = itens.map(r => {
+          const item = allItems.find(i => i.id === r.item_id);
+          return item ? item.name : '?';
+        }).join(', ');
+        const dt = new Date(itens[itens.length - 1].created_at)
+          .toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+
+        return `<tr>
+          <td class="item-name">${person}</td>
+          <td>${nomes}</td>
+          <td class="date">${dt}</td>
+        </tr>`;
+      }).join('');
+
+      container.innerHTML = `
+        <table class="tbl">
+          <thead><tr><th>Nome</th><th>Itens escolhidos</th><th>Data</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+
+    // Carrega ao abrir e atualiza a cada 60s
+    loadAll();
+    setInterval(loadAll, 60000);
+  </script>
+</body>
+</html>
